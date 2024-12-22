@@ -1,0 +1,309 @@
+<!-- 
+   DOCTYPE html 
+   
+   so far this hta must be in the 'quirks' mode
+-->
+<html>
+<!--
+//-----------------------------------------------------------------------------
+//                                                                  
+//  DBJ(tm) - Solution Evolution(tm)
+//                                                                  
+//  Copyright (c) 2001-2008 by DBJ@DBJ.ORG       
+//  All Rights Reserved. GPL applies.                                             
+//                                                                  
+//  THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF DBJ@DBJ.ORG   
+//                                                                  
+//  The copyright notice above does not evidence any                
+//  actual or intended publication of such source code.             
+//                                                                             
+//-----------------------------------------------------------------------------
+-->
+	<head>
+    <meta charset="utf-8">
+	<!-- with the following meta one controls which IE is in use 
+	     including the JavaScipt version and the rest
+		 including HTC mechanism that is in use here
+	-->
+    <!-- meta http-equiv="X-UA-Compatible" content="IE=edge" -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+	<meta name="vs_targetSchema" content="http://schemas.microsoft.com/intellisense/ie5">
+	<meta http-equiv="Content-Type" content="text/html; charset=Windows-1252">
+    <meta name="description" content="JavaScript Micropreter">
+    <meta name="author" content="Dusan B. Jovanovic">
+	
+<script language="javascript"  src="jquery-latest.js" type="text/javascript" ></script>
+<script language='JScript' >
+@cc_on
+@set @_DEBUG=(1==0)
+</script>
+
+<HTA:APPLICATION
+APPLICATIONNAME="dbj_javascript_micropreter"
+ID="dbj_javascript_micropreter"
+VERSION="2016"
+BORDER="thin"
+ICON="dbjbx.ico"
+CONTEXTMENU="no"/>
+
+		<Title>DBJ*JScript Mircopreter&trade;2001-2016 with jQuery&trade;</Title>
+		<style>
+		html,body { 
+						width:100%;height:auto; overflow:hidden;
+						background-color:transparent; margin:0px; padding:0px; 
+					}
+		table { width:100%;height:10%; min-height:10%;
+			}
+		.toolbar_button { 	font:24px/1.2 sans-serif; 
+							margin:3px; width:15%; 
+						}
+		table#toolbar { background-color:buttonface;}
+		.editor { 
+		        width:100%;height:90%; min-height:90%;
+				border:1px solid;  
+				padding:3px; overflow:auto; 
+				font:20px/1.2 monospace;
+				background-color:buttonface;
+				}
+		span.hidden, object { display: none; }		
+		</style>
+</head>
+<body scroll="no" >
+<table id="tabla" border="2" align="center" >
+<tr height="5%" >
+<th id="toolbar">
+	<button id="dugme_eval" class='toolbar_button' >Eval</button>
+	<button id="dugme_jqry" class='toolbar_button' onclick="return window.showModelessDialog('http://docs.jquery.com/Main_Page',null,'resizable:1;dialogWidth:800px;dialogHeight:600px');">jQuery</button>
+	<button id="dugme_new"  class='toolbar_button' >New</button>
+	<button id="dugme_save" class='toolbar_button' >Save</button>
+	<button id="dugme_load" class='toolbar_button' >Load</button>
+	<button id="dugme_quit" class='toolbar_button' >Quit</button>
+</th></tr> 
+<tr >
+<td colspan='1'></td> 
+</tr> 
+</table> 	
+<textarea id="display" wrap='off' class='editor'  tabindex="6"  ></textarea>
+<!--Create the Dialog Helper Object-->
+ <object id=dlgHelper CLASSID="clsid:3050f819-98b5-11cf-bb82-00aa00bdce0b" WIDTH="0px" HEIGHT="0px" VIEWASTEXT>
+ </object>
+<!-- Create the licensing object for the common dialog activex control -->
+<object CLASSID="clsid:5220cb21-c88d-11cf-b347-00aa00a28331"  ID="Object1" VIEWASTEXT>
+    <PARAM NAME="LPKPath" VALUE="comdlg.lpk">
+</object>
+<!--Create the Common Dialog Box activex control-->
+<object ID="cDialog" WIDTH="0px" HEIGHT="0px"
+    CLASSID="CLSID:F9043C85-F6F2-101A-A3C9-08002B2F49FB"
+    CODEBASE="comdlg32.cab" VIEWASTEXT>
+</object>
+	
+<!-- *** begin modal instantiation *** -->	
+<div id='modal' style="behavior:url(dbj_modal_2.htc);" NOUNLOAD_MESSAGE="*** DBJ*MODAL Dialogue WARNING ***" NODEBUG > 
+<!-- DEBUG attr. fires ondebug event. event.dbgmsg property is the debug message -->
+</div>
+<!-- *** end of modal instantiation *** -->	
+<script language="JScript">
+//Copyright� 2008 DBJ@DBJ.ORG. All Rights Reserved.
+//**Start Encode**
+//----------------------------------------------------------------- 
+function print( s_ )  {
+var rez = "" ;	
+	if (s_ instanceof Error)
+	{
+		// this is a run-time Error object
+		rez = "\n/*\n" + s_.name + " " ;
+		rez += "\nNumber : " + (s_.number & 0xFFFF) ;
+		rez += "\nDescription : " + s_.description  + "\n*/\n";
+	} else 
+	    rez = s_ ;
+    display.innerText += rez ; 
+}
+function println( s ){	print( "\n" + s) ; }
+//----------------------------------------------------------------- 
+var sPersistValue = new String();
+var file_filter = "JavaScript Files (*.js)|*.js|Text Files (*.txt)|*.txt" ;
+//----------------------------------------------------------------- 
+function check_content ( msg )
+{
+	if ( display.innerText.length < 2 ) { alert(msg); return false; }
+	return true ;
+}
+//----------------------------------------------------------------- 
+function dugme_quit.onclick()
+{
+    function modal.onyes () 
+    {
+		    checkForSave()  ;
+		    CollectGarbage() ;
+		    top.close() ;
+    }
+    function modal.onno () {}
+    
+   modal.modal_start('DBJ*Micropreter 2008', 'Quit?', 'Take your time to decide..','Cancell', 30 );
+}
+//----------------------------------------------------------------- 
+//SaveDocument uses the common dialog box object to display the save as dialog, 
+//then writes a textstream object from the value of the div's innerHTML property
+function dugme_save.onclick() { SaveDocument() ; }
+function SaveDocument(e){
+//Setting CancelError to true and using try/catch allows the user to click
+// cancel on the save as dialog without causing a script error
+  	cDialog.CancelError=true;
+  	try{
+  		if ( ! check_content("Nothing to save...")) return ; 
+  		cDialog.Filter = file_filter ;
+  		cDialog.ShowSave();
+  		var fso = new ActiveXObject("Scripting.FileSystemObject");
+  		var f = fso.CreateTextFile(cDialog.filename,  true);
+  		f.write(display.innerText );
+  		f.Close();
+  		sPersistValue=display.innerText ;}
+  	catch(e){
+  		var sCancel="true";
+  		return sCancel;}
+	display.focus();	
+  }
+//----------------------------------------------------------------- 
+//LoadDocument uses the common dialog box object to display the open dialog box, 
+//then reads the file and displays its contents in the div
+function dugme_load.onclick (e)
+{
+   function load_js ()
+   {
+   			cDialog.Filter = file_filter ;
+	    	cDialog.ShowOpen();
+   			var ForReading = 1;
+   			var fso = new ActiveXObject("Scripting.FileSystemObject");
+   			var f = fso.OpenTextFile(cDialog.filename, ForReading);
+   			var r = f.ReadAll();
+   			f.close();
+   			display.innerText = r ;
+   			//This variable is used in the checkForSave function to see if there 
+   			//is new content in the div 
+   			sPersistValue=display.innerText ;
+   	    	display.focus();
+  }
+
+//Setting CancelError to true and using try/catch allows the user to click cancel 
+//on the save as dialog without causing a script error
+   	cDialog.CancelError=true;
+   	try{
+       		load_js() ;
+		}
+   	catch(e){
+   		println(e) ;
+   	}
+} 
+//----------------------------------------------------------------- 
+//NewDocument creates a new "document" by clearing the content of the div. 
+//If there is any new content in the div, the user is asked whether or not to save
+function dugme_new.onclick ()
+{
+  	checkForSave();
+  	display.focus();
+}
+//----------------------------------------------------------------- 
+// This function checks to see if the div has new text, then displays a dialog box if appropriate
+// on YES retursn TRUE, FALSE otherwise (on NO and CANCEL )
+function checkForSave()
+{ 
+  	function modal.onyes () { SaveDocument(); display.innerText = ""; }
+  	function modal.onno  () { display.innerText = "";  }
+    try 
+    {
+	    if ( display.innerText !="" )
+	    {
+            modal.modal_start('DBJ*Micropreter 2008', 'Save the current text?', 'Take your time to decide..','Cancell', 30 );
+            // will stop after N seconds... stop_timer = window.setTimeout( stop_modal_dialogue , 1000 * 6 ) ;
+        }
+ 	} catch ( x ) {
+ 	    println(x) ; return false; 
+ 	} 
+  	return true ;
+}
+//----------------------------------------------------------------- 
+ function dugme_eval.onclick( rez, exception )
+ {
+	if ( ! check_content("Nothing to evaluate...")) return ; 
+	try {
+	rez = new String() ;
+	rez = eval( display.innerText ) ;	
+	}catch (exception)
+	{
+       print( exception ) ;
+    }
+	print( "\n/*\n" + rez + "\n*/" ) ;
+ }
+ 
+//-----------------------------------------------------------------------
+function pad( required_len, input, padchar )
+{
+	if (null == padchar) padchar = "_" ;
+	if ( null == input ) input = "NULL" ;
+    while ( input.length < required_len )
+	           input += padchar ;
+	return input ;
+}
+// 
+function window.onload()
+{
+	function copyright_notice ()
+	{
+		var msg = "\t" + document.title + 
+		"\n\tDBJ Lightweight JavaScript Interpreter " +
+		"\n\tWith: jQUERY(tm) 1.2.3 JavaScript library, http://www.jquery.com " + 
+		"\n\t-------------------------------------------------------------------------- " +
+		"\n\t(c) DBJ.ORG (mailto:dbj@dbj.org)" ; 
+		print( "\n/*\n" + msg + "\n*/\n" ) ;
+	}
+
+	function accessize ( element,inner_text,access_char,inner_html )
+	{	
+			inner_text = element.innerText ;
+			access_char = inner_text.substring(0,1) ;
+			inner_html = '<SPAN style="text-decoration:underline;">' + access_char + '</SPAN>' +
+						inner_text.substr(1) ;
+			element.accessKey = access_char ;
+			element.innerHTML = inner_html ;
+	}
+
+	document.title += " " + document.domain + " V:" + document.lastModified ;
+	
+	// make access keys from first chars of each buttons text
+	$("button").each(
+         function (i) {
+              accessize( this ) ;
+          }
+      );
+	
+	
+	//ensure that all document elements except the display textarea are unselectable
+	$("*").each(
+         function (i) {
+              this.unselectable = "on";
+          }
+      );
+    
+    display.unselectable = "off";
+	display.focus();
+	
+	window.setTimeout( copyright_notice, 1000 ) ;
+	@if (@_DEBUG) debugger;	@end
+}
+//-------------------------------------------------------------------------
+function window.onunload ()
+{
+    checkForSave() ;
+}
+//-------------------------------------------------------------------------
+// and also the ondebug event which fires if DEBUG attribute exist 
+// on the element which has dbj_modal_2.htc as its behavior
+function modal.ondebug()
+{
+    println( event.dbgmsg ) ;
+}
+//-------------------------------------------------------------------------
+</script>
+</body>
+</html>
